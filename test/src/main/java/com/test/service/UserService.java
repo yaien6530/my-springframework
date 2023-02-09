@@ -11,9 +11,7 @@ import com.spring.factory.InitializingBean;
  * @date 2022/2/12
  **/
 @Component()
-public class UserService implements InitializingBean
-//        , IUserInterface
-{
+public class UserService implements InitializingBean, IUserInterface {
 
     @Autowired
     private OrderService orderService;

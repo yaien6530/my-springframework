@@ -3,6 +3,8 @@ package com.spring;
 import com.spring.annotation.Autowired;
 import com.spring.annotation.Component;
 import com.spring.annotation.ComponentScan;
+import com.spring.factory.Aware;
+import com.spring.factory.BeanNameAware;
 import com.spring.factory.BeanPostProcessor;
 import com.spring.factory.InitializingBean;
 import com.spring.annotation.Scope;
@@ -27,22 +29,22 @@ import java.util.concurrent.ConcurrentHashMap;
  **/
 public class AnnotationApplicationContext {
 
-    private Class configClass;
+    private final Class configClass;
 
     /**
      * 用于存储BeanDefinition
      */
-    private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(64);
+    private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(64);
 
     /**
      * 单例池（所谓的bean容器，所有的单例bean都会在这里存储）
      */
-    private Map<String, Object> singletonObjectMap = new ConcurrentHashMap<>(64);
+    private final Map<String, Object> singletonObjectMap = new ConcurrentHashMap<>(64);
 
     /**
      * 用于存储bean后置处理器
      */
-    private List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
+    private final List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
 
     public AnnotationApplicationContext(Class config) {
         if (config == null) {
@@ -63,8 +65,7 @@ public class AnnotationApplicationContext {
             BeanDefinition beanDefinition = entry.getValue();
 
             Object bean = singletonObjectMap.get(beanName);
-            if ("singleton".equals(beanDefinition.getScope())
-                    && bean != null) {
+            if ("singleton".equals(beanDefinition.getScope()) && null == bean) {
                 bean = doCreateBean(beanName, beanDefinition);
                 singletonObjectMap.put(beanName, bean);
             }
@@ -89,15 +90,22 @@ public class AnnotationApplicationContext {
 
             // 根据无参构造方法创建实例
             bean = clazz.getConstructor().newInstance();
+
             // 依赖注入(会存在循环依赖问题)
             for (Field field : clazz.getDeclaredFields()) {
                 if (field.isAnnotationPresent(Autowired.class)) {
                     field.setAccessible(true);
+                    // 通过属性名字去赋值（如果没有找到就加载，加载失败就报错）
                     field.set(bean, getBean(field.getName()));
                 }
             }
 
             // 实例化后回调
+
+            // 调用Aware
+            if (bean instanceof BeanNameAware) {
+                ((BeanNameAware) bean).setBeanName(beanName);
+            }
 
             // 初始化前回调
             for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
@@ -114,7 +122,8 @@ public class AnnotationApplicationContext {
                 bean = beanPostProcessor.postProcessAfterInitialization(bean, beanName);
             }
 
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             e.printStackTrace();
         }
         return bean;
@@ -175,7 +184,8 @@ public class AnnotationApplicationContext {
                                 try {
                                     BeanPostProcessor beanPostProcessor = (BeanPostProcessor) clazz.getConstructor().newInstance();
                                     beanPostProcessorList.add(beanPostProcessor);
-                                } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                                         NoSuchMethodException e) {
                                     e.printStackTrace();
                                 }
                             }

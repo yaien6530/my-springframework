@@ -20,11 +20,11 @@ public class Test {
 
 
         // 从容器中获取Bean
-        UserService userService = (UserService) context.getBean("userService");
+//        UserService userService = (UserService) context.getBean("userService");
 
         // 实现动态代理 （由于使用的是JDK动态代理，底层使用接口实现，
         // 若使用CJLB则不需要转接口实现)
-//        IUserInterface userService = (IUserInterface) context.getBean("userService");
+        IUserInterface userService = (IUserInterface) context.getBean("userService");
 
 
         userService.test();
